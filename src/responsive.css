@@ -1,0 +1,16 @@
+@media (max-width: 480px) {
+  .app-container {
+    padding: 0.75rem;
+  }
+
+  .toast-container {
+    width: calc(100vw - 1.5rem);
+    left: 50%;
+    transform: translateX(-50%);
+  }
+
+  .btn-sm {
+    min-height: 44px;
+    min-width: 44px;
+  }
+}
