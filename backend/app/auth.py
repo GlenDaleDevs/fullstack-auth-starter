@@ -8,6 +8,7 @@ from typing import Optional
 
 # Load environment variables
 load_dotenv()
+load_dotenv(os.path.join(os.path.dirname(__file__), '..', '.env'))
 
 # JWT (JSON Web Token) configuration
 SECRET_KEY = os.getenv("SECRET_KEY")

@@ -15,6 +15,11 @@ from ..email import send_verification_email, send_password_reset_email
 logger = logging.getLogger(__name__)
 
 
+def utcnow():
+    """Return timezone-naive UTC now (safe for SQLite comparison)."""
+    return datetime.utcnow()
+
+
 def generate_verification_code() -> str:
     """Generate a 6-digit verification code."""
     return str(secrets.randbelow(900000) + 100000)
@@ -86,7 +91,7 @@ def signup(request: Request, user: schemas.UserCreate, db: Session = Depends(get
             db.flush()
 
     verification_code = generate_verification_code()
-    code_expires = datetime.now(timezone.utc) + timedelta(minutes=15)
+    code_expires = utcnow() + timedelta(minutes=15)
 
     hashed_password = auth.hash_password(user.password)
     new_user = models.User(
@@ -167,7 +172,7 @@ def login(request: Request, credentials: schemas.UserLogin, db: Session = Depend
         )
 
     if user.locked_until:
-        if datetime.now(timezone.utc) < user.locked_until:
+        if utcnow() < user.locked_until:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="Account temporarily locked. Try again later."
@@ -181,7 +186,7 @@ def login(request: Request, credentials: schemas.UserLogin, db: Session = Depend
         user.failed_login_attempts = (user.failed_login_attempts or 0) + 1
         logger.warning(f"Failed login for: {credentials.identifier[:50]}")
         if user.failed_login_attempts >= 10:
-            user.locked_until = datetime.now(timezone.utc) + timedelta(minutes=15)
+            user.locked_until = utcnow() + timedelta(minutes=15)
             logger.warning(f"Account locked: {credentials.identifier[:50]}")
         db.commit()
         raise HTTPException(
@@ -265,7 +270,7 @@ def verify_email(request: Request, data: schemas.VerifyEmailRequest, db: Session
             detail="Invalid verification request"
         )
 
-    if user.locked_until and datetime.now(timezone.utc) < user.locked_until:
+    if user.locked_until and utcnow() < user.locked_until:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Account temporarily locked. Try again later."
@@ -281,7 +286,7 @@ def verify_email(request: Request, data: schemas.VerifyEmailRequest, db: Session
             detail="Too many failed attempts. Please request a new verification code."
         )
 
-    if user.verification_code_expires and datetime.now(timezone.utc) > user.verification_code_expires:
+    if user.verification_code_expires and utcnow() > user.verification_code_expires:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Verification code expired. Please request a new one."
@@ -332,14 +337,14 @@ def resend_code(request: Request, data: schemas.ResendCodeRequest, db: Session =
             detail="Invalid request"
         )
 
-    if user.locked_until and datetime.now(timezone.utc) < user.locked_until:
+    if user.locked_until and utcnow() < user.locked_until:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Account temporarily locked. Try again later."
         )
 
     verification_code = generate_verification_code()
-    code_expires = datetime.now(timezone.utc) + timedelta(minutes=15)
+    code_expires = utcnow() + timedelta(minutes=15)
 
     user.verification_code = verification_code
     user.verification_code_expires = code_expires
@@ -373,7 +378,7 @@ def forgot_password(request: Request, data: schemas.ForgotPasswordRequest, db: S
         return {"message": "If an account exists with that email, a reset code has been sent."}
 
     reset_code = generate_verification_code()
-    code_expires = datetime.now(timezone.utc) + timedelta(minutes=15)
+    code_expires = utcnow() + timedelta(minutes=15)
 
     user.verification_code = reset_code
     user.verification_code_expires = code_expires
@@ -403,7 +408,7 @@ def reset_password(request: Request, data: schemas.ResetPasswordRequest, db: Ses
             detail="Invalid or expired reset code"
         )
 
-    if user.locked_until and datetime.now(timezone.utc) < user.locked_until:
+    if user.locked_until and utcnow() < user.locked_until:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Account temporarily locked. Try again later."
@@ -419,7 +424,7 @@ def reset_password(request: Request, data: schemas.ResetPasswordRequest, db: Ses
             detail="Too many failed attempts. Please request a new reset code."
         )
 
-    if not user.verification_code_expires or datetime.now(timezone.utc) > user.verification_code_expires:
+    if not user.verification_code_expires or utcnow() > user.verification_code_expires:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Reset code expired. Please request a new one."
@@ -460,7 +465,7 @@ def change_password(
             detail="User not found"
         )
 
-    if user.locked_until and datetime.now(timezone.utc) < user.locked_until:
+    if user.locked_until and utcnow() < user.locked_until:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Account temporarily locked. Try again later."
@@ -470,7 +475,7 @@ def change_password(
         user.failed_login_attempts = (user.failed_login_attempts or 0) + 1
         logger.warning(f"Failed password change attempt for user {user_id}")
         if user.failed_login_attempts >= 10:
-            user.locked_until = datetime.now(timezone.utc) + timedelta(minutes=15)
+            user.locked_until = utcnow() + timedelta(minutes=15)
             logger.warning(f"Account locked after failed password changes: user {user_id}")
         db.commit()
         raise HTTPException(
@@ -534,7 +539,7 @@ def delete_account(
         if not auth.verify_password(data.password, user.hashed_password):
             user.failed_login_attempts = (user.failed_login_attempts or 0) + 1
             if user.failed_login_attempts >= 10:
-                user.locked_until = datetime.now(timezone.utc) + timedelta(minutes=15)
+                user.locked_until = utcnow() + timedelta(minutes=15)
             db.commit()
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,

@@ -19,6 +19,7 @@ from .limiter import limiter
 from .logging_config import setup_logging
 
 load_dotenv()
+load_dotenv(os.path.join(os.path.dirname(__file__), '..', '.env'))
 
 # Setup logging before anything else
 setup_logging()
