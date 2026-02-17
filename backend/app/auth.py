@@ -3,7 +3,8 @@ import os
 import uuid
 from dotenv import load_dotenv
 from datetime import datetime, timedelta, timezone
-from jose import JWTError, jwt
+import jwt
+from jwt.exceptions import PyJWTError as JWTError
 from typing import Optional
 
 # Load environment variables
